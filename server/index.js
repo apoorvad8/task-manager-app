@@ -3,6 +3,10 @@ const fs = require('fs');
 const cors = require('cors');
 const app = express();
 const PORT = 5000;
+const jwt = require("jsonwebtoken");
+const dotenv = require("dotenv");
+
+dotenv.config();
 
 const DATA_PATH = './data/tasks.json';
 
@@ -12,10 +16,28 @@ app.use(express.json());
 const readTasks = () => JSON.parse(fs.readFileSync(DATA_PATH));
 const writeTasks = (data) => fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2));
 
-app.post('/login', (req, res) => {
-  const { username } = req.body;
-  // In production, use proper authentication
-  res.json({ token: username });
+// Mock function to validate user credentials
+const validateUser = (email, password) => {
+  const users = JSON.parse(fs.readFileSync(DATA_PATH));
+  return users.find((user) => user.email === email && user.password === password);
+};
+
+
+// Login endpoint
+app.post("/login", (req, res) => {
+  const { email, password } = req.body;
+
+  const user = validateUser(email, password);
+  if (!user) {
+    return res.status(401).json({ msg: "Invalid email or password" });
+  }
+
+  // Generate JWT token
+  const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, {
+    expiresIn: "1h",
+  });
+
+  res.json({ token });
 });
 
 app.get('/tasks', (req, res) => {
